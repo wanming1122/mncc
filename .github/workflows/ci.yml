@@ -27,14 +27,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set +e
-          OUT=$(python -m pytest -q --tb=long 2>&1)
+          OUT=$(python -m pytest -q --tb=long 2>&1 | head -200)
           STATUS=$?
-          gh issue create --title "CI pytest failure $(date -u +%Y%m%d-%H%M%S)" \
-            --body "exit=$STATUS
-
-\`\`\`
-$OUT
-\`\`\`"
+          BODY="pytest exit=${STATUS}"$'\n\n'"${OUT}"
+          gh issue create --title "CI pytest failure $(date -u +%Y%m%d-%H%M%S)" --body "$BODY"
       - name: Fail on pytest errors
         if: steps.pytest.outcome == 'failure'
         run: exit 1
