@@ -2,6 +2,9 @@ name: CI
 
 on: [push, pull_request]
 
+permissions:
+  issues: write
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -18,11 +21,20 @@ jobs:
         id: pytest
         run: python -m pytest -q --tb=short
         continue-on-error: true
-      - name: Emit failure summary
+      - name: Report pytest failure to issue
         if: steps.pytest.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python -m pytest -q --tb=short 2>&1 | tail -80
-          python -m pytest -q --tb=short 2>&1 | tail -80 | while IFS= read -r l; do echo "::error::${l}"; done
+          set +e
+          OUT=$(python -m pytest -q --tb=long 2>&1)
+          STATUS=$?
+          gh issue create --title "CI pytest failure $(date -u +%Y%m%d-%H%M%S)" \
+            --body "exit=$STATUS
+
+\`\`\`
+$OUT
+\`\`\`"
       - name: Fail on pytest errors
         if: steps.pytest.outcome == 'failure'
         run: exit 1

@@ -132,8 +132,9 @@ def test_call_tool_is_error_prefix() -> None:
 
 
 def test_request_timeout_raises_mcp_error() -> None:
-    # call_mode=silent：tools/call 永不回应 → 单请求超时（D5）
-    client = _client(call_mode="silent", timeout=0.5)
+    # call_mode=silent：tools/call 永不回应 → 单请求超时（D5）。
+    # timeout=2.0：握手要有充足余量（慢 CI 上 0.5s 可能不够），只让 call 超时。
+    client = _client(call_mode="silent", timeout=2.0)
     try:
         client.connect()
         with pytest.raises(McpError, match="超时"):
