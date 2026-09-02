@@ -38,8 +38,10 @@ def test_timeout_kills_process(cmd) -> None:
 
 
 def test_timeout_shows_partial_output(cmd) -> None:
+    # flush=True：print 到管道默认块缓冲，1s 内不 flush 就看不到部分输出
+    script = "python -c \"import time; print('partial', flush=True); time.sleep(60)\""
     with pytest.raises(Exception, match="已产生"):
-        cmd.run("python -c \"import time; print('partial'); time.sleep(60)\"", timeout=1)
+        cmd.run(script, timeout=1)
 
 
 def test_timeout_clamped_to_max(cmd) -> None:

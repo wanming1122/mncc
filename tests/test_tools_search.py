@@ -83,7 +83,9 @@ def test_list_dir_symlink_dir_not_followed(ls, tmp_path: Path) -> None:
         pytest.skip("当前环境无法创建符号链接")
     out = ls.run(".")
     assert "link/" in out  # 链接本身可见
-    assert "secret.py" not in out  # 但不递归进入
+    # 链接不被递归进入：link 下不出现任何子项（secret.py 若出现，只可能经真实目录 real/，
+    # 与"未跟随链接"无关——这里只断言链接自身未被展开）
+    assert "link/secret.py" not in out
 
 
 # ---- grep ----

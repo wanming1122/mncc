@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import threading
 from typing import Any
 
 from ..safety import CommandGuard
@@ -96,27 +97,67 @@ class RunCommandTool(Tool):
         # 两端统一避免 Windows 默认 GBK 乱码（§3）
         env = {**os.environ, "PYTHONUTF8": "1"}
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
                 shell=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=t,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 env=env,
             )
-        except subprocess.TimeoutExpired as exc:
-            partial = _clip(_as_text(exc.stdout) + _as_text(exc.stderr))
-            hint = f"\n已产生的输出：\n{partial}" if partial.strip() else ""
-            raise ToolError(f"命令超过 {t} 秒未结束，已强制终止：{cmd}{hint}") from None
         except OSError as exc:
             raise ToolError(f"命令启动失败：{exc}") from exc
 
-        sections = [f"exit_code: {proc.returncode}"]
-        if proc.stdout:
-            sections.append(f"--- stdout ---\n{_clip(proc.stdout)}")
-        if proc.stderr:
-            sections.append(f"--- stderr ---\n{_clip(proc.stderr)}")
+        # 读取线程持续泵取输出：这样超时强杀时已产生的部分输出不会丢
+        # （communicate(timeout) 的 TimeoutExpired 在 Windows 上不带部分输出，
+        # subprocess.run 在 POSIX 上干脆不收集——两者都不可靠）
+        out_chunks: list[bytes] = []
+        err_chunks: list[bytes] = []
+
+        def _pump(stream: object, sink: list[bytes]) -> None:
+            try:
+                while True:
+                    chunk = stream.read1(4096)  # type: ignore[attr-defined]
+                    if not chunk:
+                        break
+                    sink.append(chunk)
+            except (OSError, ValueError):
+                pass  # 进程被杀/流关闭：已读到的内容保留
+
+        pump_threads = [
+            threading.Thread(target=_pump, args=(proc.stdout, out_chunks), daemon=True),
+            threading.Thread(target=_pump, args=(proc.stderr, err_chunks), daemon=True),
+        ]
+        for thread in pump_threads:
+            thread.start()
+
+        timed_out = False
+        try:
+            proc.wait(timeout=t)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            try:
+                proc.kill()  # 杀掉 shell 后立即收尸，避免僵尸
+                proc.wait()
+            except OSError:
+                pass
+        for thread in pump_threads:
+            # 超时后：子进程可能残留（Windows 孤儿），join 限时避免阻塞
+            thread.join(timeout=2 if timed_out else None)
+
+        stdout = _as_text(b"".join(out_chunks))
+        stderr = _as_text(b"".join(err_chunks))
+        if timed_out:
+            partial = _clip(stdout + stderr)
+            hint = f"\n已产生的输出：\n{partial}" if partial.strip() else ""
+            raise ToolError(f"命令超过 {t} 秒未结束，已强制终止：{cmd}{hint}") from None
+
+        returncode = proc.returncode
+
+        sections = [f"exit_code: {returncode}"]
+        if stdout:
+            sections.append(f"--- stdout ---\n{_clip(stdout)}")
+        if stderr:
+            sections.append(f"--- stderr ---\n{_clip(stderr)}")
         if len(sections) == 1:
             sections.append("（无输出）")
         # 非零退出码不算 is_error：exit_code 本身就是要回传给模型的事实，
