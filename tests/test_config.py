@@ -67,6 +67,106 @@ class TestParseTomlSubset:
         assert parse_toml_subset("x = 1") == {"x": 1}
 
 
+class TestMcpServersInlineTable:
+    """M6 D2：数组元素支持内联表；name/command/args 校验。"""
+
+    def _write(self, path, text):
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_inline_table_array_parsed(self) -> None:
+        text = (
+            'mcp_servers = [{ name = "echo", command = "python", '
+            'args = ["-m", "mncc.mcp.echo_server"] }]'
+        )
+        assert parse_toml_subset(text) == {
+            "mcp_servers": [
+                {"name": "echo", "command": "python", "args": ["-m", "mncc.mcp.echo_server"]}
+            ]
+        }
+
+    def test_inline_table_string_containing_comma(self) -> None:
+        # 引号内的逗号不应被当作元素分隔
+        text = 'mcp_servers = [{ name = "a,b", command = "python" }]'
+        assert parse_toml_subset(text) == {
+            "mcp_servers": [{"name": "a,b", "command": "python"}]
+        }
+
+    def test_inline_table_args_may_be_omitted(self) -> None:
+        text = 'mcp_servers = [{ name = "echo", command = "python" }]'
+        assert parse_toml_subset(text) == {
+            "mcp_servers": [{"name": "echo", "command": "python"}]
+        }
+
+    def test_array_mixed_string_and_table_rejected(self) -> None:
+        # 数组仍以字符串为主；混入裸标识符要报错（不允许静默错读）
+        with pytest.raises(ConfigError, match="数组元素"):
+            parse_toml_subset('x = ["a", b]')
+
+    def test_load_config_mcp_servers_tuple(self, tmp_path) -> None:
+        g = self._write(
+            tmp_path / "g.toml",
+            'mcp_servers = [{ name = "echo", command = "python", '
+            'args = ["-m", "mncc.mcp.echo_server"] }]',
+        )
+        cfg = load_config(None, global_path=g, project_path=tmp_path / "nope")
+        assert cfg.mcp_servers == (
+            {"name": "echo", "command": "python", "args": ["-m", "mncc.mcp.echo_server"]},
+        )
+
+    def test_load_config_multiple_servers(self, tmp_path) -> None:
+        text = (
+            'mcp_servers = ['
+            '{ name = "echo", command = "python", args = ["-m", "mncc.mcp.echo_server"] }, '
+            '{ name = "fs", command = "npx", args = ["-y", "server-filesystem", "."] }'
+            "]"
+        )
+        g = self._write(tmp_path / "g.toml", text)
+        cfg = load_config(None, global_path=g, project_path=tmp_path / "nope")
+        assert [s["name"] for s in cfg.mcp_servers] == ["echo", "fs"]
+
+    @pytest.mark.parametrize("bad_name", ['"Echo"', '"echo server"', '"echo!"'])
+    def test_invalid_name_rejected(self, tmp_path, bad_name: str) -> None:
+        g = self._write(
+            tmp_path / "g.toml",
+            f'mcp_servers = [{{ name = {bad_name}, command = "python" }}]',
+        )
+        with pytest.raises(ConfigError, match="name"):
+            load_config(None, global_path=g, project_path=tmp_path / "nope")
+
+    def test_missing_name_rejected(self, tmp_path) -> None:
+        g = self._write(tmp_path / "g.toml", 'mcp_servers = [{ command = "python" }]')
+        with pytest.raises(ConfigError, match="name"):
+            load_config(None, global_path=g, project_path=tmp_path / "nope")
+
+    def test_missing_command_rejected(self, tmp_path) -> None:
+        g = self._write(tmp_path / "g.toml", 'mcp_servers = [{ name = "x" }]')
+        with pytest.raises(ConfigError, match="command"):
+            load_config(None, global_path=g, project_path=tmp_path / "nope")
+
+    def test_bad_args_element_type_rejected(self, tmp_path) -> None:
+        g = self._write(
+            tmp_path / "g.toml",
+            'mcp_servers = [{ name = "x", command = "python", args = ["-m", 3] }]',
+        )
+        with pytest.raises(ConfigError, match="args"):
+            load_config(None, global_path=g, project_path=tmp_path / "nope")
+
+    def test_non_table_element_rejected(self, tmp_path) -> None:
+        g = self._write(tmp_path / "g.toml", 'mcp_servers = ["echo"]')
+        with pytest.raises(ConfigError, match="内联表"):
+            load_config(None, global_path=g, project_path=tmp_path / "nope")
+
+    def test_mcp_servers_must_be_array(self, tmp_path) -> None:
+        g = self._write(tmp_path / "g.toml", 'mcp_servers = "echo"')
+        with pytest.raises(ConfigError, match="数组"):
+            load_config(None, global_path=g, project_path=tmp_path / "nope")
+
+    def test_default_empty(self, tmp_path) -> None:
+        cfg = load_config(None, global_path=tmp_path / "nope", project_path=tmp_path / "n2")
+        assert cfg.mcp_servers == ()
+
+
 class TestLoadConfig:
     def _write(self, path, text):
         path.write_text(text, encoding="utf-8")

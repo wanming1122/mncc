@@ -380,3 +380,61 @@ def test_build_registry_path_guard_via_execute(tmp_path: Path) -> None:
     )
     assert result.is_error is True
     assert "越界" in result.output
+
+
+# ---- M6：_connect_mcp 与 MCP 生命周期（D4/D5）----
+
+
+def test_connect_mcp_empty_returns_empty_list() -> None:
+    from mncc.cli import _connect_mcp
+    from mncc.tools.base import ToolRegistry
+
+    assert _connect_mcp(ToolRegistry(), ()) == []
+
+
+def test_connect_mcp_converts_config_to_server_config(monkeypatch) -> None:
+    """Config.mcp_servers（tuple[dict] 原始结构）→ McpServerConfig，再交给 attach。"""
+    from mncc import cli
+    from mncc.mcp import McpServerConfig
+    from mncc.tools.base import ToolRegistry
+
+    captured: dict[str, object] = {}
+
+    def fake_attach(registry, cfgs):
+        captured["cfgs"] = cfgs
+        return []
+
+    monkeypatch.setattr(cli, "attach_mcp_tools", fake_attach)
+    servers = ({"name": "echo", "command": "python", "args": ["-m", "mncc.mcp.echo_server"]},)
+    cli._connect_mcp(ToolRegistry(), servers)
+    assert captured["cfgs"] == [
+        McpServerConfig(name="echo", command="python", args=("-m", "mncc.mcp.echo_server"))
+    ]
+
+
+def test_main_closes_mcp_clients_on_exit(monkeypatch) -> None:
+    """成功连接的 client 在 main 退出后统一 close（D4/D5 finally 语义）。"""
+    from mncc import cli
+    from mncc.config import Config
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    holder: dict[str, FakeClient] = {}
+
+    def fake_connect(registry, servers):
+        holder["client"] = FakeClient()
+        return [holder["client"]]
+
+    monkeypatch.setattr(cli, "load_config", lambda *a, **k: Config(
+        mcp_servers=({"name": "echo", "command": "python"},)
+    ))
+    monkeypatch.setattr(cli, "resolve_api_key", lambda cfg: "sk-test")
+    monkeypatch.setattr(cli, "_connect_mcp", fake_connect)
+    monkeypatch.setattr(cli, "OpenAICompatClient", lambda **kwargs: ReplyClient())
+    assert main(["-p", "你好"]) == EXIT_OK
+    assert holder["client"].closed is True

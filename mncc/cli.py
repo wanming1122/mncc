@@ -33,6 +33,7 @@ from .agent.loop import (
 from .config import GLOBAL_CONFIG_PATH, Config, ConfigError, load_config, resolve_api_key
 from .llm.client import LLMClient
 from .llm.openai_compat import OpenAICompatClient
+from .mcp import McpClient, McpServerConfig, attach_mcp_tools
 from .prompts.system import SYSTEM_PROMPT
 from .safety import CommandGuard, PathGuard
 from .tools import (
@@ -108,6 +109,23 @@ def build_registry(root: Path | None = None) -> ToolRegistry:
     registry.register(GrepTool(path_guard))
     registry.register(RunCommandTool(CommandGuard()))
     return registry
+
+
+def _connect_mcp(registry: ToolRegistry, servers: tuple[dict[str, object], ...]) -> list[McpClient]:
+    """把 Config.mcp_servers（tuple[dict] 原始结构）转成 McpServerConfig 并 attach。
+
+    返回成功连接的 client 列表；失败的 server 已在 attach 内打警告跳过（D4），
+    主流程照常。
+    """
+    cfgs = [
+        McpServerConfig(
+            name=entry["name"],
+            command=entry["command"],
+            args=tuple(entry.get("args") or ()),
+        )
+        for entry in servers
+    ]
+    return attach_mcp_tools(registry, cfgs)
 
 
 def build_prompt_session() -> PromptSession[str] | _FallbackPrompt:
@@ -371,14 +389,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         base_url=config.base_url, api_key=api_key, model=config.model
     )
     registry = build_registry()
-    if args.task is not None:
-        return run_print_mode(
-            config, client, args.task, registry, yolo=args.yolo, stats_json=args.stats_json
-        )
+    mcp_clients = _connect_mcp(registry, config.mcp_servers) if config.mcp_servers else []
     try:
-        return run_repl(config, client, registry, yolo=args.yolo)
-    except KeyboardInterrupt:  # 流式渲染过程中的 Ctrl+C 兜底
-        return EXIT_INTERRUPT
+        if args.task is not None:
+            return run_print_mode(
+                config, client, args.task, registry, yolo=args.yolo, stats_json=args.stats_json
+            )
+        try:
+            return run_repl(config, client, registry, yolo=args.yolo)
+        except KeyboardInterrupt:  # 流式渲染过程中的 Ctrl+C 兜底
+            return EXIT_INTERRUPT
+    finally:
+        # D4/D5：-p 与 REPL 两种退出都统一关闭全部 MCP client（shutdown+terminate 防僵尸）
+        for mcp_client in mcp_clients:
+            mcp_client.close()
 
 
 if __name__ == "__main__":

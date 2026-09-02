@@ -2,8 +2,8 @@
 
 为什么手写 TOML 子集解析器而不引入 tomli：依赖白名单（§3）里没有 tomli；
 标准库 tomllib 需要 Python 3.11，而项目承诺 3.10+；配置文件只需要扁平的
-字符串/整数/布尔/字符串数组，~70 行子集解析器加单测足够覆盖。
-M6 接入 mcp_servers 时再评估是否扩展表语法或引入解析库。
+字符串/整数/布尔/字符串数组（M6 起数组元素支持内联表，见 D2），~90 行
+子集解析器加单测足够覆盖。
 """
 
 from __future__ import annotations
@@ -39,6 +39,8 @@ class Config:
     model_context_limit: int = 128_000
     compact_threshold: float = 0.8
     summary_max_tokens: int = 500
+    # ---- M6：MCP server 列表（D2）。cli 层再转成 McpServerConfig，避免反向依赖 mcp 包 ----
+    mcp_servers: tuple[dict[str, object], ...] = ()
 
 
 _CONFIG_FIELDS = {f.name for f in fields(Config)}
@@ -48,12 +50,16 @@ _STR_DQ_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"(?:\s+#.*)?$')
 _STR_SQ_RE = re.compile(r"^'([^']*)'(?:\s+#.*)?$")
 _INT_RE = re.compile(r"^-?\d[\d_]*$")
 _FLOAT_RE = re.compile(r"^-?\d[\d_]*\.\d[\d_]*$")
+# D2：name 限小写字母/数字/下划线/连字符，防命名空间注入（mcp__ 前缀冲突）
+_MCP_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
 
 
 def parse_toml_subset(text: str, *, source: str = "<string>") -> dict[str, Any]:
-    """解析 mncc 需要的 TOML 子集：注释、字符串、整数、小数、布尔、字符串数组。
+    """解析 mncc 需要的 TOML 子集：注释、字符串、整数、小数、布尔、数组。
 
-    刻意不支持：转义换行、多行字符串、内联表、日期等。写出这些会得到带
+    M6（D2）数组元素扩展为两种：双引号字符串 / 内联表 `{ k = v, ... }`
+    （内联表的值仍限既有标量子集，不支持嵌套表）。
+    刻意不支持：转义换行、多行字符串、顶层表、日期等。写出这些会得到带
     行号的报错而不是静默错读——配置文件宁可失败得早。
     """
     result: dict[str, Any] = {}
@@ -65,12 +71,11 @@ def parse_toml_subset(text: str, *, source: str = "<string>") -> dict[str, Any]:
         if match is None:
             raise ConfigError(f"{source}:{lineno} 无法解析的行：{line!r}")
         key, value = match.group(1), match.group(2).strip()
-        result[key] = _parse_value(value, source=source, lineno=lineno)
+        result[key] = _parse_value(value, where=f"{source}:{lineno}")
     return result
 
 
-def _parse_value(value: str, *, source: str, lineno: int) -> Any:
-    where = f"{source}:{lineno}"
+def _parse_value(value: str, *, where: str) -> Any:
     if value.startswith('"'):
         match = _STR_DQ_RE.match(value)
         if match is None:
@@ -96,13 +101,86 @@ def _parse_value(value: str, *, source: str, lineno: int) -> Any:
         inner = stripped[1:-1].strip()
         if not inner:
             return []
-        elements = re.findall(r'"([^"]*)"', inner)
-        if len(elements) != len(inner.split(",")):
-            raise ConfigError(f"{where} 数组元素必须是双引号字符串：{value!r}")
-        return elements
+        return _parse_array(inner, where=where)
     raise ConfigError(
-        f"{where} 不支持的值（子集仅支持 字符串/整数/小数/布尔/字符串数组）：{value!r}"
+        f"{where} 不支持的值（子集仅支持 字符串/整数/小数/布尔/数组）：{value!r}"
     )
+
+
+def _parse_array(inner: str, *, where: str) -> list[Any]:
+    """解析数组元素：双引号字符串或内联表 `{ k = v, ... }`（D2）。"""
+    result: list[Any] = []
+    for elem in _split_top_level(inner):
+        elem = elem.strip()
+        if not elem:
+            raise ConfigError(f"{where} 数组元素不能为空")
+        if elem.startswith("{"):
+            result.append(_parse_inline_table(elem, where=where))
+        elif elem.startswith('"'):
+            match = _STR_DQ_RE.match(elem)
+            if match is None:
+                raise ConfigError(f"{where} 数组元素格式错误：{elem!r}")
+            result.append(re.sub(r"\\(.)", r"\1", match.group(1)))
+        else:
+            raise ConfigError(
+                f"{where} 数组元素必须是双引号字符串或内联表：{elem!r}"
+            )
+    return result
+
+
+def _parse_inline_table(text: str, *, where: str) -> dict[str, Any]:
+    """解析 `{ name = "echo", command = "python", ... }`（值仍限标量子集）。"""
+    if not (text.startswith("{") and text.endswith("}")):
+        raise ConfigError(f"{where} 内联表格式错误：{text!r}")
+    inner = text[1:-1].strip()
+    table: dict[str, Any] = {}
+    if not inner:
+        return table
+    for piece in _split_top_level(inner):
+        match = _KEY_RE.match(piece)
+        if match is None:
+            raise ConfigError(f"{where} 内联表键值格式错误：{piece!r}")
+        key, value = match.group(1), match.group(2).strip()
+        table[key] = _parse_value(value, where=where)
+    return table
+
+
+def _split_top_level(text: str) -> list[str]:
+    """按逗号切分，但忽略引号内与方括号/花括号内的逗号（深度感知）。"""
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    in_str = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if in_str:
+            current.append(ch)
+            if ch == "\\" and i + 1 < len(text):  # 引号内的转义整体保留
+                current.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_str = False
+            i += 1
+            continue
+        if ch == '"':
+            in_str = True
+            current.append(ch)
+        elif ch in "[{":
+            depth += 1
+            current.append(ch)
+        elif ch in "]}":
+            depth = max(depth - 1, 0)
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+        i += 1
+    parts.append("".join(current).strip())
+    return parts
 
 
 def load_config(
@@ -145,11 +223,39 @@ def load_config(
         # 阈值与代码里 * threshold 同构（D7）：float 且 0 < t <= 1
         if not isinstance(value, float) or not 0 < value <= 1:
             raise ConfigError("配置项 compact_threshold 必须是 0 到 1 之间的小数（不含 0）")
+    if "mcp_servers" in raw:
+        raw["mcp_servers"] = _validate_mcp_servers(raw["mcp_servers"])
 
     config = Config(**raw)  # type: ignore[arg-type] # 各键的类型已逐项校验
     if not config.base_url.strip():
         raise ConfigError("base_url 不能为空")
     return config
+
+
+def _validate_mcp_servers(value: object) -> tuple[dict[str, object], ...]:
+    """D2 校验：数组、每项为内联表；name/command 非空字符串、name 限 [a-z0-9_-]+、
+    args 为字符串数组。返回 tuple[dict] 原始结构，由 cli 层转换，避免 config 依赖 mcp 包。"""
+    if not isinstance(value, list):
+        raise ConfigError("配置项 mcp_servers 必须是数组")
+    validated: list[dict[str, object]] = []
+    for idx, entry in enumerate(value):
+        if not isinstance(entry, dict):
+            raise ConfigError(f"配置项 mcp_servers[{idx}] 必须是内联表 {{ name, command, args }}")
+        name = entry.get("name")
+        command = entry.get("command")
+        args = entry.get("args", [])
+        if not isinstance(name, str) or not name.strip():
+            raise ConfigError(f"配置项 mcp_servers[{idx}] 的 name 必须是非空字符串")
+        if not _MCP_NAME_RE.fullmatch(name):
+            raise ConfigError(
+                f"配置项 mcp_servers[{idx}] 的 name 只能包含小写字母/数字/下划线/连字符：{name!r}"
+            )
+        if not isinstance(command, str) or not command.strip():
+            raise ConfigError(f"配置项 mcp_servers[{idx}] 的 command 必须是非空字符串")
+        if not isinstance(args, list) or any(not isinstance(a, str) for a in args):
+            raise ConfigError(f"配置项 mcp_servers[{idx}] 的 args 必须是字符串数组")
+        validated.append({"name": name, "command": command, "args": list(args)})
+    return tuple(validated)
 
 
 def resolve_api_key(config: Config) -> str:
