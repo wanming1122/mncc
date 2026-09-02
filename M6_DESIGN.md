@@ -7,6 +7,12 @@
 >   全量 **304 passed + 2 skipped**、ruff 零报错；
 > - 本机验收通过：`-p` 与 REPL 均成功调用 `mcp__echo__echo` 并含回显（已向 `~/.mncc/config.toml` 追加 echo server）；
 > - CI（`.github/workflows/ci.yml`）、`INTERVIEW.md`、README 补全、路线图 M6 勾选均已就位；
+> - **CI 首跑暴露两个既有跨平台缺陷并已修复**（此前 254 项只在本机 Windows 验证过）：
+>   ① `tools/command.py` 超时改用读取线程泵取 + wait，跨平台保留"已产生的输出"回显
+>   （`subprocess.run` 在 POSIX 不收集、Windows `communicate` 超时也不带输出）；
+>   ② `test_tools_search.py` 软链用例断言改精确（`link/secret.py` not in out），
+>   原 `secret.py` not in out 在 Linux 上会因真实目录 `real/` 误报；
+>   CI 现全绿。
 > - 发布按 D7：GitHub Release + `pipx install git+...`（PyPI 后置可选）。
 >
 > 范围：PROMPT.md §5.A（MCP 客户端，用户已选定）+ §10（GitHub Actions CI、发布、

@@ -2,9 +2,6 @@ name: CI
 
 on: [push, pull_request]
 
-permissions:
-  issues: write
-
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -18,21 +15,6 @@ jobs:
       - name: Ruff
         run: python -m ruff check .
       - name: Pytest
-        id: pytest
-        run: python -m pytest -q --tb=short
-        continue-on-error: true
-      - name: Report pytest failure to issue
-        if: steps.pytest.outcome == 'failure'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          OUT=$(python -m pytest -q --tb=long 2>&1 | head -200)
-          STATUS=$?
-          BODY="pytest exit=${STATUS}"$'\n\n'"${OUT}"
-          gh issue create --title "CI pytest failure $(date -u +%Y%m%d-%H%M%S)" --body "$BODY"
-      - name: Fail on pytest errors
-        if: steps.pytest.outcome == 'failure'
-        run: exit 1
+        run: python -m pytest -q
       - name: Bench mock smoke
         run: python bench/runner.py --mode mock
