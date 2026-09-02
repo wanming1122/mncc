@@ -1,0 +1,3 @@
+name = "文件 IO 与纯逻辑分离"
+category = "refactor"
+difficulty = "hard"

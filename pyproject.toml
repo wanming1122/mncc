@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mncc"
+version = "0.1.0"
+description = "mini Claude Code —— 终端里的 AI 编程助手（零框架，从零实现 Agent Loop）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "mncc authors" }]
+keywords = ["agent", "cli", "ai", "coding-assistant"]
+classifiers = [
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "openai>=1.40",
+    "rich>=13.0",
+    "prompt_toolkit>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+mncc = "mncc.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mncc*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# bench 脚本需先注入项目根到 sys.path 才能 `python bench/runner.py` 直接运行
+"bench/*.py" = ["E402"]
