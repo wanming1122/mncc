@@ -15,6 +15,16 @@ jobs:
       - name: Ruff
         run: python -m ruff check .
       - name: Pytest
-        run: python -m pytest -q
+        id: pytest
+        run: python -m pytest -q --tb=short
+        continue-on-error: true
+      - name: Emit failure summary
+        if: steps.pytest.outcome == 'failure'
+        run: |
+          python -m pytest -q --tb=short 2>&1 | tail -80
+          python -m pytest -q --tb=short 2>&1 | tail -80 | while IFS= read -r l; do echo "::error::${l}"; done
+      - name: Fail on pytest errors
+        if: steps.pytest.outcome == 'failure'
+        run: exit 1
       - name: Bench mock smoke
         run: python bench/runner.py --mode mock
