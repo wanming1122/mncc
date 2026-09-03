@@ -111,7 +111,7 @@ python bench/report.py bench/results/<基线>.json bench/results/<迭代>.json  
 | 类别 refactor | 4/4 | 100.0% |
 | 类别 testwrite | 4/4 | 100.0% |
 
-平均 8.1 轮 / 任务，总 tokens 591,382。逐任务明细见
+平均 8.2 轮 / 任务，总 tokens 591,382。逐任务明细见
 `bench/results/real-20260902-195602.json`（`python bench/report.py` 直接生成）。
 
 ### 评测驱动迭代（迭代 1：新增"做完即止"纪律 → 无效，已回滚）
