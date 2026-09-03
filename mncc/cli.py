@@ -67,7 +67,9 @@ SLASH_USAGE = """\
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="mncc", description="mini Claude Code —— 终端 AI 编程助手（M2：工具调用闭环）"
+        prog="mncc",
+        description="mini Claude Code —— 终端 AI 编程助手（Agent Loop + 流式工具调用 + "
+        "上下文压缩 + MCP 客户端 + 评测）",
     )
     parser.add_argument(
         "-p",
