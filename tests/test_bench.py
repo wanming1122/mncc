@@ -192,9 +192,15 @@ def _fake_subprocess_run(monkeypatch, tmp_path: Path, *, agent_effect: str) -> N
             stats_path = Path(cmd[cmd.index("--stats-json") + 1])
             stats_path.write_text(
                 json.dumps(
-                    {"status": "completed", "turns": 3, "prompt_tokens": 100,
-                     "completion_tokens": 40, "total_tokens": 140, "elapsed": 1.5,
-                     "chars": 10}
+                    {
+                        "status": "completed",
+                        "turns": 3,
+                        "prompt_tokens": 100,
+                        "completion_tokens": 40,
+                        "total_tokens": 140,
+                        "elapsed": 1.5,
+                        "chars": 10,
+                    }
                 ),
                 encoding="utf-8",
             )
@@ -202,17 +208,17 @@ def _fake_subprocess_run(monkeypatch, tmp_path: Path, *, agent_effect: str) -> N
         if isinstance(cmd, list) and cmd[1:3] == ["-m", "pytest"]:
             ok = agent_effect == "pass"
             return subprocess.CompletedProcess(
-                cmd, 0 if ok else 1,
-                "2 passed in 0.1s" if ok else "1 failed in 0.1s", "",
+                cmd,
+                0 if ok else 1,
+                "2 passed in 0.1s" if ok else "1 failed in 0.1s",
+                "",
             )
         raise AssertionError(f"未预期的子进程调用：{cmd}")
 
     monkeypatch.setattr("bench.runner.subprocess.run", fake_run)
 
 
-def test_run_task_real_pipeline_via_stubbed_subprocess(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_run_task_real_pipeline_via_stubbed_subprocess(tmp_path: Path, monkeypatch) -> None:
     task = load_meta("bf_calc_ops")
     _fake_subprocess_run(monkeypatch, tmp_path, agent_effect="pass")
     result = run_task(task, mode="real")
@@ -247,8 +253,14 @@ META = {
 
 
 def _result(task_id: str, status: str) -> TaskResult:
-    return TaskResult(task_id=task_id, mode="real", status=status, exit_code=0,
-                      verified=status == "pass", pytest_detail="")
+    return TaskResult(
+        task_id=task_id,
+        mode="real",
+        status=status,
+        exit_code=0,
+        verified=status == "pass",
+        pytest_detail="",
+    )
 
 
 def test_aggregate_overall_and_dimensions() -> None:
@@ -285,12 +297,18 @@ def test_report_markdown_table_content() -> None:
 
 def test_report_compare_table_shows_deltas() -> None:
     old = {
-        "run_id": "real-old", "mode": "real", "label": "", "git_head": "a",
+        "run_id": "real-old",
+        "mode": "real",
+        "label": "",
+        "git_head": "a",
         "tasks": [asdict_like(_result("a", "fail")), asdict_like(_result("b", "pass"))],
         "summary": aggregate([_result("a", "fail"), _result("b", "pass")], META),
     }
     new = {
-        "run_id": "real-new", "mode": "real", "label": "迭代", "git_head": "b",
+        "run_id": "real-new",
+        "mode": "real",
+        "label": "迭代",
+        "git_head": "b",
         "tasks": [asdict_like(_result("a", "pass")), asdict_like(_result("b", "pass"))],
         "summary": aggregate([_result("a", "pass"), _result("b", "pass")], META),
     }

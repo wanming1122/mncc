@@ -228,6 +228,7 @@ def test_brief_uses_tool_brief_and_tolerates_bad_json(registry: ToolRegistry) ->
 
 def test_preview_failure_backfills_error_not_raises(registry: ToolRegistry) -> None:
     """D7 回归：确认回调算预览时抛错 → is_error 回填原因，不炸穿循环。"""
+
     # 模拟真实确认回调（cli._repl_confirm 形态）：先调 preview 再返回 True
     def confirm(tool: Tool, args: dict[str, Any]) -> bool:
         tool.preview(args)

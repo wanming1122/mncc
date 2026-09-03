@@ -245,8 +245,10 @@ def run_repl(config: Config, client: LLMClient, registry: ToolRegistry, *, yolo:
     context = _make_context(config)
     prompt_session = build_prompt_session()
     if isinstance(prompt_session, _FallbackPrompt):
-        renderer.hint("当前终端不支持高级输入（历史/多行），已用简易模式；"
-                      "Windows Terminal / cmd 下体验完整功能")
+        renderer.hint(
+            "当前终端不支持高级输入（历史/多行），已用简易模式；"
+            "Windows Terminal / cmd 下体验完整功能"
+        )
 
     def toolbar() -> HTML:
         # 状态栏常驻：让"上下文在长大"这件事可见，为 M4 的压缩做心理铺垫
@@ -350,9 +352,7 @@ def _write_stats(path: str, result: LoopResult) -> None:
         "elapsed": round(result.elapsed, 2),
         "chars": len(result.content),
     }
-    Path(path).write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    Path(path).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _force_utf8_stdio() -> None:
@@ -387,9 +387,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_startup_error(exc)
         return EXIT_FAIL
 
-    client = OpenAICompatClient(
-        base_url=config.base_url, api_key=api_key, model=config.model
-    )
+    client = OpenAICompatClient(base_url=config.base_url, api_key=api_key, model=config.model)
     registry = build_registry()
     mcp_clients = _connect_mcp(registry, config.mcp_servers) if config.mcp_servers else []
     try:

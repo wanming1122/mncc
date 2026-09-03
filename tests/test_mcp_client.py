@@ -12,7 +12,7 @@ import pytest
 
 from mncc.mcp.client import McpClient, McpError, McpServerConfig
 
-_STUB_TEMPLATE = '''\
+_STUB_TEMPLATE = """\
 import json
 import sys
 
@@ -79,13 +79,11 @@ while True:
     send(response)
     if msg.get("method") == "shutdown":
         break
-'''
+"""
 
 
 def _stub_script(*, init_mode: str = "ok", call_mode: str = "ok") -> str:
-    return (
-        _STUB_TEMPLATE.replace("__INIT_MODE__", init_mode).replace("__CALL_MODE__", call_mode)
-    )
+    return _STUB_TEMPLATE.replace("__INIT_MODE__", init_mode).replace("__CALL_MODE__", call_mode)
 
 
 def _client(

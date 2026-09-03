@@ -33,7 +33,7 @@ PASS = "[PASS]"
 FAIL = "[FAIL]"
 SKIP = "[SKIP]"
 
-_CALC_PY = '''def add(a, b):
+_CALC_PY = """def add(a, b):
     return a + b
 
 
@@ -49,9 +49,9 @@ def div(a, b):
     if b == 0:
         return 0  # bug 2：除零没有抛 ZeroDivisionError
     return a / b
-'''
+"""
 
-_TEST_CALC_PY = '''import pytest
+_TEST_CALC_PY = """import pytest
 from calc import add, sub, mul, div
 
 
@@ -74,7 +74,7 @@ def test_div():
 def test_div_by_zero():
     with pytest.raises(ZeroDivisionError):
         div(1, 0)
-'''
+"""
 
 
 def run(cmd: list[str], *, cwd: Path, timeout: int = 600) -> subprocess.CompletedProcess[str]:
@@ -183,9 +183,17 @@ def layer_m4() -> list[tuple[str, str]]:
         messages = [
             {"role": "system", "content": "sys"},
             {"role": "user", "content": "x" * 400},
-            {"role": "assistant", "content": None, "tool_calls": [
-                {"id": "t1", "type": "function", "function": {"name": "echo", "arguments": "{}"}}
-            ]},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "t1",
+                        "type": "function",
+                        "function": {"name": "echo", "arguments": "{}"},
+                    }
+                ],
+            },
             {"role": "tool", "tool_call_id": "t1", "content": "y" * 400},
             {"role": "user", "content": "q2"},
             {"role": "assistant", "content": "a2"},

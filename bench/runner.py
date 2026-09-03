@@ -104,9 +104,7 @@ def load_meta(task_id: str) -> TaskMeta:
 
 def discover_tasks(only: list[str] | None = None) -> list[str]:
     """发现全部任务 id（目录序稳定）；only 非空时校验存在性并只跑这些。"""
-    ids = sorted(
-        p.name for p in TASKS_DIR.iterdir() if p.is_dir() and (p / "meta.toml").is_file()
-    )
+    ids = sorted(p.name for p in TASKS_DIR.iterdir() if p.is_dir() and (p / "meta.toml").is_file())
     if only:
         unknown = [i for i in only if i not in ids]
         if unknown:
@@ -201,14 +199,11 @@ def _event_from_dict(raw: dict[str, Any]) -> Event:
     if kind == "ResponseCompleted":
         usage = raw.get("usage")
         tool_calls = [
-            ToolCall(tc["id"], tc["name"], tc["arguments"])
-            for tc in raw.get("tool_calls", [])
+            ToolCall(tc["id"], tc["name"], tc["arguments"]) for tc in raw.get("tool_calls", [])
         ]
         return ResponseCompleted(
             content=raw.get("content", ""),
-            usage=(
-                Usage(usage["prompt"], usage["completion"], usage["total"]) if usage else None
-            ),
+            usage=(Usage(usage["prompt"], usage["completion"], usage["total"]) if usage else None),
             tool_calls=tool_calls,
         )
     raise ValueError(f"cassette 未知事件类型：{kind!r}")
@@ -267,15 +262,26 @@ def _run_mock(meta: TaskMeta, task_dir: Path, workdir: Path) -> TaskResult:
     elapsed = round(time.monotonic() - start, 2)
 
     if exit_code != 0:
-        return _make_result(meta, mode="mock", status="error", exit_code=exit_code,
-                            elapsed=elapsed, error=error or f"mncc -p 退出码 {exit_code}")
+        return _make_result(
+            meta,
+            mode="mock",
+            status="error",
+            exit_code=exit_code,
+            elapsed=elapsed,
+            error=error or f"mncc -p 退出码 {exit_code}",
+        )
     shutil.copy2(task_dir / "test.py", workdir / "test.py")  # D2：评分才解锁
     verified, pytest_detail = run_scoring_pytest(workdir)
     stats = _read_agent_stats(stats_path)
     return _make_result(
-        meta, mode="mock", status="pass" if verified else "fail",
-        exit_code=exit_code, verified=verified, pytest_detail=pytest_detail,
-        elapsed=elapsed, **stats,
+        meta,
+        mode="mock",
+        status="pass" if verified else "fail",
+        exit_code=exit_code,
+        verified=verified,
+        pytest_detail=pytest_detail,
+        elapsed=elapsed,
+        **stats,
     )
 
 
@@ -288,8 +294,14 @@ def _run_real(
     task_text = (task_dir / "task.md").read_text(encoding="utf-8")
     stats_path = workdir / "stats.json"
     cmd = [
-        sys.executable, "-m", "mncc", "-p", task_text, "--yolo",
-        "--stats-json", str(stats_path),
+        sys.executable,
+        "-m",
+        "mncc",
+        "-p",
+        task_text,
+        "--yolo",
+        "--stats-json",
+        str(stats_path),
     ]
     if model:
         cmd += ["--model", model]
@@ -306,8 +318,12 @@ def _run_real(
             env=_sub_env(),
         )
     except subprocess.TimeoutExpired:
-        return _make_result(meta, mode="real", status="timeout",
-                            error=f"agent 超过 {timeout}s 未结束，已强杀（token 无落盘）")
+        return _make_result(
+            meta,
+            mode="real",
+            status="timeout",
+            error=f"agent 超过 {timeout}s 未结束，已强杀（token 无落盘）",
+        )
     except OSError as exc:
         return _make_result(meta, mode="real", status="error", error=f"子进程启动失败：{exc}")
     elapsed = round(time.monotonic() - start, 2)
@@ -324,9 +340,15 @@ def _run_real(
         tail = " | ".join(tail_lines[-6:]) or "无输出"
         error = f"mncc 退出码 {exit_code}：{tail}"
     return _make_result(
-        meta, mode="real", status="pass" if verified else "fail",
-        exit_code=exit_code, verified=verified, pytest_detail=pytest_detail,
-        error=error, elapsed=elapsed, **stats,
+        meta,
+        mode="real",
+        status="pass" if verified else "fail",
+        exit_code=exit_code,
+        verified=verified,
+        pytest_detail=pytest_detail,
+        error=error,
+        elapsed=elapsed,
+        **stats,
     )
 
 
@@ -368,8 +390,9 @@ def aggregate(results: list[TaskResult], metas: dict[str, TaskMeta]) -> dict[str
         }
 
     def by(key: str, values: tuple[str, ...]) -> dict[str, Any]:
-        return {v: stats([r for r in results if getattr(metas[r.task_id], key) == v])
-                for v in values}
+        return {
+            v: stats([r for r in results if getattr(metas[r.task_id], key) == v]) for v in values
+        }
 
     return {
         **stats(results),
@@ -385,7 +408,11 @@ def git_head() -> str:
     try:
         proc = subprocess.run(
             ["git", "-C", str(PROJECT_ROOT), "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -397,8 +424,7 @@ def print_results_table(results: list[TaskResult], metas: dict[str, TaskMeta]) -
     table = Table(title=f"bench 结果（{len(results)} 任务）")
     for column in ("任务", "难度", "类别", "结果", "verified", "轮数", "tokens", "耗时 s"):
         table.add_column(column)
-    colors = {"pass": "green", "fail": "red", "timeout": "yellow",
-              "error": "red", "skipped": "dim"}
+    colors = {"pass": "green", "fail": "red", "timeout": "yellow", "error": "red", "skipped": "dim"}
     for r in results:
         meta = metas[r.task_id]
         table.add_row(
@@ -415,8 +441,13 @@ def print_results_table(results: list[TaskResult], metas: dict[str, TaskMeta]) -
 
 
 def _run_payload(
-    mode: str, results: list[TaskResult], metas: dict[str, TaskMeta], *,
-    label: str, model: str | None, timeout: int,
+    mode: str,
+    results: list[TaskResult],
+    metas: dict[str, TaskMeta],
+    *,
+    label: str,
+    model: str | None,
+    timeout: int,
 ) -> dict[str, Any]:
     real = [r for r in results if r.mode == "real"]
     return {
@@ -433,8 +464,11 @@ def _run_payload(
         },
         # 明细补上难度/类别：报告渲染（report.py）只依赖结果文件本身
         "tasks": [
-            {**asdict(r), "difficulty": metas[r.task_id].difficulty,
-             "category": metas[r.task_id].category}
+            {
+                **asdict(r),
+                "difficulty": metas[r.task_id].difficulty,
+                "category": metas[r.task_id].category,
+            }
             for r in results
         ],
         "summary": aggregate(real, metas) if real else {},  # mock 不进跑分统计（D5）
@@ -479,14 +513,27 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bench/runner.py", description="mncc bench 20 任务评测（M5）"
     )
-    parser.add_argument("--mode", choices=["real", "mock"], default="real",
-                        help="real=真实 API 跑分；mock=cassette 回放冒烟（无 API，CI 可用）")
-    parser.add_argument("--tasks", nargs="*", metavar="ID", default=None,
-                        help="只跑指定任务 id（空格分隔）；缺省跑全部")
+    parser.add_argument(
+        "--mode",
+        choices=["real", "mock"],
+        default="real",
+        help="real=真实 API 跑分；mock=cassette 回放冒烟（无 API，CI 可用）",
+    )
+    parser.add_argument(
+        "--tasks",
+        nargs="*",
+        metavar="ID",
+        default=None,
+        help="只跑指定任务 id（空格分隔）；缺省跑全部",
+    )
     parser.add_argument("--label", default="", help="本轮跑分标签（写入 results JSON）")
     parser.add_argument("--model", default=None, help="透传给 mncc -p --model")
-    parser.add_argument("--timeout", type=int, default=AGENT_TIMEOUT,
-                        help=f"单任务 agent 硬超时秒数（默认 {AGENT_TIMEOUT}）")
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=AGENT_TIMEOUT,
+        help=f"单任务 agent 硬超时秒数（默认 {AGENT_TIMEOUT}）",
+    )
     return parser
 
 
@@ -505,7 +552,10 @@ def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     try:
         exit_code = run(
-            args.mode, tasks=args.tasks, label=args.label, model=args.model,
+            args.mode,
+            tasks=args.tasks,
+            label=args.label,
+            model=args.model,
             timeout=args.timeout,
         )
     except ConfigError as exc:

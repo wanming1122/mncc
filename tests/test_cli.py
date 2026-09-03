@@ -240,8 +240,13 @@ def test_main_print_mode_stats_json_written(fake_deps, capsys, tmp_path: Path) -
     assert main(["-p", "你好", "--stats-json", str(stats)]) == EXIT_OK
     payload = json.loads(stats.read_text(encoding="utf-8"))
     assert set(payload) == {
-        "status", "turns", "prompt_tokens", "completion_tokens",
-        "total_tokens", "elapsed", "chars",
+        "status",
+        "turns",
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "elapsed",
+        "chars",
     }
     assert payload["status"] == "completed"
     assert payload["turns"] == 1
@@ -375,9 +380,7 @@ def test_build_registry_path_guard_via_execute(tmp_path: Path) -> None:
 
     registry = build_registry(root=tmp_path)
     args = json.dumps({"path": str(tmp_path.parent / "outside.txt")})
-    result = registry.execute(
-        "read_file", args, confirm=lambda _t, _a: True, yolo=False
-    )
+    result = registry.execute("read_file", args, confirm=lambda _t, _a: True, yolo=False)
     assert result.is_error is True
     assert "越界" in result.output
 
@@ -430,9 +433,11 @@ def test_main_closes_mcp_clients_on_exit(monkeypatch) -> None:
         holder["client"] = FakeClient()
         return [holder["client"]]
 
-    monkeypatch.setattr(cli, "load_config", lambda *a, **k: Config(
-        mcp_servers=({"name": "echo", "command": "python"},)
-    ))
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda *a, **k: Config(mcp_servers=({"name": "echo", "command": "python"},)),
+    )
     monkeypatch.setattr(cli, "resolve_api_key", lambda cfg: "sk-test")
     monkeypatch.setattr(cli, "_connect_mcp", fake_connect)
     monkeypatch.setattr(cli, "OpenAICompatClient", lambda **kwargs: ReplyClient())

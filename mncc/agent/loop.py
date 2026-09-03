@@ -81,16 +81,12 @@ class Session:
         )
 
     def add_tool_message(self, tool_call_id: str, content: str) -> None:
-        self.messages.append(
-            {"role": "tool", "tool_call_id": tool_call_id, "content": content}
-        )
+        self.messages.append({"role": "tool", "tool_call_id": tool_call_id, "content": content})
 
     def reset(self) -> None:
         """/clear：清掉对话，但保留 system prompt——身份与规则不该被清空。"""
         system = (
-            self.messages[:1]
-            if self.messages and self.messages[0].get("role") == "system"
-            else []
+            self.messages[:1] if self.messages and self.messages[0].get("role") == "system" else []
         )
         self.messages = system
         self.total_usage = Usage()
@@ -263,9 +259,7 @@ def run_agent_loop(
             for tc in completed.tool_calls:
                 session.add_tool_message(
                     tc.id,
-                    context.truncate_tool_output(
-                        "当前会话未启用任何工具，请直接用文字回答"
-                    ),
+                    context.truncate_tool_output("当前会话未启用任何工具，请直接用文字回答"),
                 )
             continue
 
@@ -280,9 +274,7 @@ def run_agent_loop(
                 result = registry.execute(tc.name, tc.arguments, confirm=confirm_fn, yolo=yolo)
                 renderer.tool_done(is_error=result.is_error, elapsed=time.monotonic() - elapsed)
                 # L1（D6）：回填前的统一体积兜底（16000 字符），记录进历史前压一手
-                session.add_tool_message(
-                    tc.id, context.truncate_tool_output(result.output)
-                )
+                session.add_tool_message(tc.id, context.truncate_tool_output(result.output))
                 done += 1
         except KeyboardInterrupt:
             for tc in completed.tool_calls[done:]:
@@ -294,8 +286,6 @@ def run_agent_loop(
             return finish(STATUS_INTERRUPTED)
         except ConfirmRefused as exc:
             for tc in completed.tool_calls[done:]:
-                session.add_tool_message(
-                    tc.id, context.truncate_tool_output(_REFUSED_TOOL_NOTE)
-                )
+                session.add_tool_message(tc.id, context.truncate_tool_output(_REFUSED_TOOL_NOTE))
             renderer.error(exc, title="操作被拒")
             return finish(STATUS_ERROR)

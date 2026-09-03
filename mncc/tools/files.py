@@ -51,9 +51,7 @@ class ReadFileTool(Tool):
     def run(self, path: str, offset: int = 1, limit: int | None = None) -> str:
         p = self._guard.resolve(path)  # 守卫在最前：越界先于存在性检查被拒
         if not p.exists():
-            raise ToolError(
-                f"文件不存在：{path}（相对路径基于当前目录解析；请确认路径后重试）"
-            )
+            raise ToolError(f"文件不存在：{path}（相对路径基于当前目录解析；请确认路径后重试）")
         if p.is_dir():
             raise ToolError(f"{path} 是目录而不是文件；请用 list_dir 查看目录内容")
         try:
@@ -191,8 +189,7 @@ class EditFileTool(Tool):
         resolved = self._guard.resolve(path)
         if not resolved.exists():
             raise ToolError(
-                f"文件不存在：{path}。edit_file 只能修改已存在的文件；"
-                "新建文件请用 write_file"
+                f"文件不存在：{path}。edit_file 只能修改已存在的文件；新建文件请用 write_file"
             )
         if resolved.is_dir():
             raise ToolError(f"{path} 是目录而不是文件；edit_file 只能修改文件")
@@ -249,14 +246,13 @@ class EditFileTool(Tool):
         start = max(0, line_no - 3)
         end = min(len(lines), line_no + 2)
         width = len(str(end + 1))
-        actual = "\n".join(
-            f"{n:>{width}}\t{lines[n - 1]}" for n in range(start + 1, end + 1)
-        )
-        mini = "\n".join(
-            difflib.unified_diff(
-                lines[start:end], old_string.split("\n"), lineterm="", n=1
+        actual = "\n".join(f"{n:>{width}}\t{lines[n - 1]}" for n in range(start + 1, end + 1))
+        mini = (
+            "\n".join(
+                difflib.unified_diff(lines[start:end], old_string.split("\n"), lineterm="", n=1)
             )
-        ) or "（对比片段为空）"
+            or "（对比片段为空）"
+        )
         return (
             f"old_string 未在 {path} 中找到（0 次命中）。"
             f"最相近位置在第 {line_no} 行附近：\n--- 文件中该处实际内容 ---\n{actual}\n"

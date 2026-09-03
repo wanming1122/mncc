@@ -156,13 +156,17 @@ def test_compact_keeps_system_summary_and_last_two_rounds() -> None:
         _tool_calls_message("t1"),
         _tool_message("t1", "r1"),
         {"role": "user", "content": "q2"},
-        {"role": "assistant", "content": None, "tool_calls": [
-            {
-                "id": "t2",
-                "type": "function",
-                "function": {"name": "echo", "arguments": "{}"},
-            }
-        ]},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "t2",
+                    "type": "function",
+                    "function": {"name": "echo", "arguments": "{}"},
+                }
+            ],
+        },
         _tool_message("t2", "r2"),
         {"role": "user", "content": "q3"},
         _tool_calls_message("t3"),
@@ -244,15 +248,14 @@ def test_compact_degraded_on_llm_error_trims_oldest() -> None:
     assert report.degraded is True
     assert new_messages[0] == messages[0]  # system 守位
     assert len(new_messages) < len(messages)  # 只删最老：尾部原样保留
-    assert new_messages[1:] == messages[-(len(new_messages) - 1):]
+    assert new_messages[1:] == messages[-(len(new_messages) - 1) :]
     assert cm.estimate_messages(new_messages) < 800  # 低于阈值
 
 
 def test_compact_degraded_on_empty_summary() -> None:
     cm = _cm(limit=1000)
     messages = [{"role": "system", "content": "s"}] + [
-        {"role": "user" if i % 2 == 0 else "assistant", "content": "a" * 320}
-        for i in range(12)
+        {"role": "user" if i % 2 == 0 else "assistant", "content": "a" * 320} for i in range(12)
     ]
     client = FakeSummaryClient("")
     _new, report = cm.compact(messages, client)

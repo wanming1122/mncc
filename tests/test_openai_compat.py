@@ -210,9 +210,7 @@ def _chunk_with_tool_calls(
 ):
     """构造携带 delta.tool_calls 的 chunk。"""
     func = (
-        ChoiceDeltaToolCallFunction(name=name, arguments=arguments)
-        if (name or arguments)
-        else None
+        ChoiceDeltaToolCallFunction(name=name, arguments=arguments) if (name or arguments) else None
     )
     tc = ChoiceDeltaToolCall(index=index, id=tc_id, function=func)
     return ChatCompletionChunk(
@@ -299,7 +297,7 @@ def test_tool_calls_text_before_and_after(install_fake_openai) -> None:
 def test_tool_calls_with_usage(install_fake_openai) -> None:
     """工具调用 + usage 同时返回。"""
     chunks = [
-        _chunk_with_tool_calls(0, tc_id="call_u", name="echo", arguments='{}'),
+        _chunk_with_tool_calls(0, tc_id="call_u", name="echo", arguments="{}"),
         _chunk(finish="tool_calls"),
         _chunk(usage=CompletionUsage(prompt_tokens=20, completion_tokens=8, total_tokens=28)),
     ]

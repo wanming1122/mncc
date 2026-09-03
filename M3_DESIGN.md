@@ -30,22 +30,27 @@
 class SafetyViolation(Exception):
     """守卫拒绝。message 面向模型：说明原因 + 正确做法。"""
 
+
 class PathGuard:
     """把所有文件操作限制在工作区（启动目录）内。"""
-    def __init__(self, root: Path) -> None: ...   # root 在构造时 resolve() 固化
+
+    def __init__(self, root: Path) -> None: ...  # root 在构造时 resolve() 固化
     def resolve(self, path: str) -> Path:
         """相对路径以 root 为基准 → resolve() 展开 ../ 与符号链接
         → 结果必须等于 root 或位于 root 内，否则 raise SafetyViolation。"""
 
+
 @dataclass(frozen=True)
 class CommandVerdict:
-    action: str   # "allow" | "confirm" | "block"
+    action: str  # "allow" | "confirm" | "block"
     reason: str = ""
+
 
 class CommandGuard:
     """黑名单必拦截；其余命令首次执行需确认；授权按会话记忆。"""
+
     def check(self, cmd: str) -> CommandVerdict: ...
-    def approve(self, cmd: str) -> None: ...      # 记住已授权的精确命令串
+    def approve(self, cmd: str) -> None: ...  # 记住已授权的精确命令串
 ```
 
 ## 2. 工具扩展

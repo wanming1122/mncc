@@ -16,16 +16,18 @@ from mncc.config import (
 
 class TestParseTomlSubset:
     def test_basic_types_and_comments(self) -> None:
-        text = "\n".join([
-            "# 全局配置",
-            'base_url = "https://api.deepseek.com"  # 行尾注释',
-            "model = 'deepseek-chat'",
-            "max_turns = 30",
-            "token_budget = 100_000",
-            "flag_on = true",
-            "flag_off = false",
-            'tags = ["a", "b"]',
-        ])
+        text = "\n".join(
+            [
+                "# 全局配置",
+                'base_url = "https://api.deepseek.com"  # 行尾注释',
+                "model = 'deepseek-chat'",
+                "max_turns = 30",
+                "token_budget = 100_000",
+                "flag_on = true",
+                "flag_off = false",
+                'tags = ["a", "b"]',
+            ]
+        )
         assert parse_toml_subset(text) == {
             "base_url": "https://api.deepseek.com",
             "model": "deepseek-chat",
@@ -88,15 +90,11 @@ class TestMcpServersInlineTable:
     def test_inline_table_string_containing_comma(self) -> None:
         # 引号内的逗号不应被当作元素分隔
         text = 'mcp_servers = [{ name = "a,b", command = "python" }]'
-        assert parse_toml_subset(text) == {
-            "mcp_servers": [{"name": "a,b", "command": "python"}]
-        }
+        assert parse_toml_subset(text) == {"mcp_servers": [{"name": "a,b", "command": "python"}]}
 
     def test_inline_table_args_may_be_omitted(self) -> None:
         text = 'mcp_servers = [{ name = "echo", command = "python" }]'
-        assert parse_toml_subset(text) == {
-            "mcp_servers": [{"name": "echo", "command": "python"}]
-        }
+        assert parse_toml_subset(text) == {"mcp_servers": [{"name": "echo", "command": "python"}]}
 
     def test_array_mixed_string_and_table_rejected(self) -> None:
         # 数组仍以字符串为主；混入裸标识符要报错（不允许静默错读）
@@ -116,7 +114,7 @@ class TestMcpServersInlineTable:
 
     def test_load_config_multiple_servers(self, tmp_path) -> None:
         text = (
-            'mcp_servers = ['
+            "mcp_servers = ["
             '{ name = "echo", command = "python", args = ["-m", "mncc.mcp.echo_server"] }, '
             '{ name = "fs", command = "npx", args = ["-y", "server-filesystem", "."] }'
             "]"

@@ -58,8 +58,9 @@ def _dimension_rows(run: dict[str, Any]) -> list[str]:
         rows.append(f"| {title} | 通过/总数 | pass_rate |")
         rows.append("|---|---|---|")
         for name, stats in dim.items():
-            rows.append(f"| {name} | {stats['pass']}/{stats['total']} | "
-                        f"{_pct(stats['pass_rate'])} |")
+            rows.append(
+                f"| {name} | {stats['pass']}/{stats['total']} | {_pct(stats['pass_rate'])} |"
+            )
     return rows
 
 
@@ -90,14 +91,17 @@ def summary_table(run: dict[str, Any]) -> Table:
     table = Table(title=f"bench 跑分 {_header(run)}")
     for column in ("任务", "难度", "类别", "结果", "verified", "轮数", "tokens", "耗时 s"):
         table.add_column(column)
-    colors = {"pass": "green", "fail": "red", "timeout": "yellow",
-              "error": "red", "skipped": "dim"}
+    colors = {"pass": "green", "fail": "red", "timeout": "yellow", "error": "red", "skipped": "dim"}
     for task in run.get("tasks", []):
         table.add_row(
-            task["task_id"], task["difficulty"], task["category"],
+            task["task_id"],
+            task["difficulty"],
+            task["category"],
             f"[{colors.get(task['status'], 'white')}]{task['status']}[/]",
             {True: "✓", False: "✗"}.get(task["verified"], "—"),
-            str(task["turns"]), f"{task['total_tokens']:,}", f"{task['elapsed']:.1f}",
+            str(task["turns"]),
+            f"{task['total_tokens']:,}",
+            f"{task['elapsed']:.1f}",
         )
     summary = run.get("summary") or {}
     if summary:

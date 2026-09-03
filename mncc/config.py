@@ -102,9 +102,7 @@ def _parse_value(value: str, *, where: str) -> Any:
         if not inner:
             return []
         return _parse_array(inner, where=where)
-    raise ConfigError(
-        f"{where} 不支持的值（子集仅支持 字符串/整数/小数/布尔/数组）：{value!r}"
-    )
+    raise ConfigError(f"{where} 不支持的值（子集仅支持 字符串/整数/小数/布尔/数组）：{value!r}")
 
 
 def _parse_array(inner: str, *, where: str) -> list[Any]:
@@ -122,9 +120,7 @@ def _parse_array(inner: str, *, where: str) -> list[Any]:
                 raise ConfigError(f"{where} 数组元素格式错误：{elem!r}")
             result.append(re.sub(r"\\(.)", r"\1", match.group(1)))
         else:
-            raise ConfigError(
-                f"{where} 数组元素必须是双引号字符串或内联表：{elem!r}"
-            )
+            raise ConfigError(f"{where} 数组元素必须是双引号字符串或内联表：{elem!r}")
     return result
 
 

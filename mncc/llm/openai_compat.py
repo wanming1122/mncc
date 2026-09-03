@@ -160,9 +160,7 @@ class OpenAICompatClient(LLMClient):
                     for frag in delta.tool_calls or ():
                         # 少数端点不发 index；缺省按 0 处理（单工具调用场景不受影响）
                         index = frag.index if frag.index is not None else 0
-                        slot = fragments.setdefault(
-                            index, {"id": "", "name": "", "arguments": []}
-                        )
+                        slot = fragments.setdefault(index, {"id": "", "name": "", "arguments": []})
                         if frag.id:
                             slot["id"] = frag.id
                         if frag.function is not None:

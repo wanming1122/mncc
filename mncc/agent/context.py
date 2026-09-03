@@ -60,9 +60,7 @@ def estimate_tokens(text: str) -> int:
 def _cut_middle(text: str) -> str:
     """保留首尾、中间替换为省略标记（D6 样式）。"""
     omitted = len(text) - L1_TRUNCATE_HEAD - L1_TRUNCATE_TAIL
-    return (
-        f"{text[:L1_TRUNCATE_HEAD]}…[中间省略 {omitted} 字符]…{text[-L1_TRUNCATE_TAIL:]}"
-    )
+    return f"{text[:L1_TRUNCATE_HEAD]}…[中间省略 {omitted} 字符]…{text[-L1_TRUNCATE_TAIL:]}"
 
 
 class TokenEstimator:
@@ -137,9 +135,7 @@ class ContextManager:
         for m in messages:
             total += self.estimator.estimate(str(m.get("content") or ""))
             for tc in m.get("tool_calls") or []:
-                total += self.estimator.estimate(
-                    str(tc.get("function", {}).get("arguments") or "")
-                )
+                total += self.estimator.estimate(str(tc.get("function", {}).get("arguments") or ""))
         return total
 
     def _threshold_tokens(self) -> int:
@@ -173,7 +169,7 @@ class ContextManager:
         before = self.estimate_messages(messages)
         old, kept = self._split_recent_rounds(messages)
         system = old[:1] if old and old[0].get("role") == "system" else []
-        old_rest = old[len(system):]
+        old_rest = old[len(system) :]
         if not old_rest:
             # 无可压缩内容（历史不超过 2 轮）：原样返回
             return list(messages), CompactReport(before, before, 0)
@@ -205,17 +201,13 @@ class ContextManager:
     ) -> tuple[list[Message], CompactReport]:
         """D5 降级：保留 system，从最旧的非 system 消息开始逐条删除。"""
         system = messages[:1] if messages and messages[0].get("role") == "system" else []
-        rest = list(messages[len(system):])
+        rest = list(messages[len(system) :])
         while rest and self.estimate_messages(system + rest) >= self._threshold_tokens():
             del rest[0]
         trimmed = system + rest
-        return trimmed, CompactReport(
-            before, self.estimate_messages(trimmed), 0, degraded=True
-        )
+        return trimmed, CompactReport(before, self.estimate_messages(trimmed), 0, degraded=True)
 
-    def _split_recent_rounds(
-        self, messages: list[Message]
-    ) -> tuple[list[Message], list[Message]]:
+    def _split_recent_rounds(self, messages: list[Message]) -> tuple[list[Message], list[Message]]:
         """切成 (旧消息=进摘要, 保留=最近 2 原子轮)。"""
         kept: list[Message] = []
         rounds = 0

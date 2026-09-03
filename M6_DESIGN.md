@@ -106,8 +106,10 @@ MCP 相关测试三类：(a) framing 纯函数测试（协议层）；(b) stub s
 def encode_message(payload: dict) -> bytes:
     """JSON-RPC over stdio 帧编码：json.dumps + Content-Length 头。"""
 
+
 def decode_message(stream: io.BufferedReader) -> dict | None:
     """读一帧：解析 Content-Length 头，读满 body，返回 dict；EOF 返回 None。"""
+
 
 def make_request(method: str, params: dict, _id: int) -> dict: ...
 def make_notification(method: str, params: dict) -> dict: ...

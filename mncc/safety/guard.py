@@ -63,6 +63,7 @@ class PathGuard:
 
 # ---- 命令守卫 ----
 
+
 @dataclass(frozen=True)
 class CommandVerdict:
     """一次命令检查的结论。"""
@@ -92,8 +93,7 @@ _BLOCKED_PATTERNS: list[tuple[str, str]] = [
 ]
 
 _BLOCK_HINT = (
-    "请改用更安全的等效操作（如删除单个指定文件、在受控目录内操作），"
-    "或向用户说明原因并请求人工处理"
+    "请改用更安全的等效操作（如删除单个指定文件、在受控目录内操作），或向用户说明原因并请求人工处理"
 )
 
 

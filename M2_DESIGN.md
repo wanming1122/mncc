@@ -19,14 +19,15 @@
 class ToolCall:
     id: str
     name: str
-    arguments: str        # 原始 JSON 串；解析失败作为错误回填，让模型自纠
+    arguments: str  # 原始 JSON 串；解析失败作为错误回填，让模型自纠
+
 
 @dataclass
 class ResponseCompleted(Event):
     content: str
     finish_reason: str = "stop"
     usage: Usage | None = None
-    tool_calls: list[ToolCall] = field(default_factory=list)   # 新增
+    tool_calls: list[ToolCall] = field(default_factory=list)  # 新增
 ```
 
 为什么聚合放客户端：流式协议里 tool_calls 按 index 分片交错到达（id/name/arguments 碎片），

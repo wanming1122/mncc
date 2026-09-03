@@ -95,40 +95,53 @@ float 而不是 0–100 整数：0.8 与 code 里 `* threshold` 直接对应，�
 
 ```python
 # ---- 保留（向后兼容，不动）----
-def estimate_tokens(text: str) -> int: ...   # 现有实现原样保留
+def estimate_tokens(text: str) -> int: ...  # 现有实现原样保留
+
 
 # ---- 新增 ----
 class TokenEstimator:
     """带在线校准的估算器。estimate 时：cjk + ceil(rest / divisor)，divisor 随校准演化。"""
-    def __init__(self) -> None: ...                      # divisor = 4.0
+
+    def __init__(self) -> None: ...  # divisor = 4.0
     def estimate(self, text: str) -> int: ...
-    def observe(self, estimated: int, actual: int) -> None: ...
+    def observe(self, estimated: int, actual: int) -> None:
+        ...
         # 一次配对观测：「本地估算的 prompt tokens」vs「API 返回的真实 prompt_tokens」。
         # ratio = actual / estimated（estimated>0 时）；divisor = 0.8*divisor + 0.2*(4*ratio)，见 D1。
         # loop 在每轮结束时调用 ctx.observe(prompt_est, completed.usage.prompt_tokens)
+
     @property
-    def divisor(self) -> float: ...                      # 测试与 /context 展示用
+    def divisor(self) -> float: ...  # 测试与 /context 展示用
+
 
 class ContextManager:
     """L1 截断 + L2 压缩的编排者。持有 TokenEstimator。"""
-    def __init__(self, *, model_context_limit: int, compact_threshold: float,
-                 summary_max_tokens: int) -> None: ...
-    def estimate_messages(self, messages: list[Message]) -> int: ...
+
+    def __init__(
+        self, *, model_context_limit: int, compact_threshold: float, summary_max_tokens: int
+    ) -> None: ...
+    def estimate_messages(self, messages: list[Message]) -> int:
+        ...
         # 与 Session.tokens_estimate 同口径：所有 content + tool_calls arguments
+
     def should_compact(self, messages: list[Message]) -> bool: ...
-    def compact(self, messages: list[Message], client: LLMClient
-                ) -> tuple[list[Message], CompactReport]: ...
+    def compact(
+        self, messages: list[Message], client: LLMClient
+    ) -> tuple[list[Message], CompactReport]:
+        ...
         # 内部：1) 找分界点（保留 system + 最近 2 原子轮）
         #      2) 旧消息文本拼给 complete() 的 SUMMARY_PROMPT
         #      3) 成功 → [system, 摘要 user 消息, *最近两轮]
         #      4) 失败（LLMError/空回复）→ 按 D5 截断最老消息，report.degraded=True
-    def truncate_tool_output(self, text: str) -> str: ...   # L1（D6）
+
+    def truncate_tool_output(self, text: str) -> str: ...  # L1（D6）
+
 
 @dataclass
 class CompactReport:
-    before_tokens: int      # 压缩前估算
-    after_tokens: int       # 压缩后估算
-    summary_chars: int      # 生成的摘要字符数
+    before_tokens: int  # 压缩前估算
+    after_tokens: int  # 压缩后估算
+    summary_chars: int  # 生成的摘要字符数
     degraded: bool = False  # True=summarize 失败降级为截断
 ```
 
@@ -149,10 +162,10 @@ class CompletionResult:
     content: str
     usage: Usage | None = None
 
+
 class LLMClient(ABC):
     @abstractmethod
-    def complete(self, messages: list[Message],
-                 max_tokens: int | None = None) -> CompletionResult:
+    def complete(self, messages: list[Message], max_tokens: int | None = None) -> CompletionResult:
         """非流式补全（summarize 等内部任务用）。失败抛 LLMError 子类。"""
         raise NotImplementedError
 ```
@@ -179,7 +192,7 @@ def run_agent_loop(client, renderer, session, registry=None, *,
    ```python
    if context.should_compact(session.messages):
        session.messages, report = context.compact(session.messages, client)
-       renderer.compact(report)   # 打印 before→after 对比 + 是否降级
+       renderer.compact(report)  # 打印 before→after 对比 + 是否降级
    ```
 3. 流结束拿到 `completed.usage` 后：
    ```python
@@ -200,8 +213,9 @@ def run_agent_loop(client, renderer, session, registry=None, *,
 新增模块级函数（loop.py 导出）：
 
 ```python
-def compact_session(session: Session, context: ContextManager,
-                    client: LLMClient, renderer: Any) -> bool:
+def compact_session(
+    session: Session, context: ContextManager, client: LLMClient, renderer: Any
+) -> bool:
     """手动压缩（/compact）。返回是否发生了压缩。"""
 ```
 
@@ -247,9 +261,11 @@ power 提示：`context_view` 签名加关键字参数带默认值，既有调�
   `compact_session(...)` + 提示文本
 - REPL 与 `-p` 两处 `run_agent_loop(...)` 调用各加 `context=ctx`，其中：
   ```python
-  ctx = ContextManager(model_context_limit=config.model_context_limit,
-                       compact_threshold=config.compact_threshold,
-                       summary_max_tokens=config.summary_max_tokens)
+  ctx = ContextManager(
+      model_context_limit=config.model_context_limit,
+      compact_threshold=config.compact_threshold,
+      summary_max_tokens=config.summary_max_tokens,
+  )
   ```
 - ScriptedClient 类测试里 DummyClient 需实现 `complete()`（测试文件同步更新，见 §4）
 

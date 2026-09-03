@@ -204,13 +204,9 @@ class McpClient:
             try:
                 item = self._messages.get(timeout=remaining)
             except queue.Empty:
-                raise McpError(
-                    f"等待响应超时（{timeout:g}s）：server {self._cfg.name!r}"
-                ) from None
+                raise McpError(f"等待响应超时（{timeout:g}s）：server {self._cfg.name!r}") from None
             if item.msg is None:
-                raise McpError(
-                    item.error or f"server {self._cfg.name!r} 连接已关闭"
-                )
+                raise McpError(item.error or f"server {self._cfg.name!r} 连接已关闭")
             if item.msg.get("id") == _id:
                 return item.msg
 
@@ -262,9 +258,7 @@ class McpTool(Tool):
         return True  # D3：远端副作用对用户是黑盒，REPL 下先预览确认
 
 
-def attach_mcp_tools(
-    registry: ToolRegistry, servers: list[McpServerConfig]
-) -> list[McpClient]:
+def attach_mcp_tools(registry: ToolRegistry, servers: list[McpServerConfig]) -> list[McpClient]:
     """逐台 connect + list_tools + 注册（D4）。
 
     任何一台失败（启动失败/握手超时/协议错误）只在 stderr 打一条警告并跳过，

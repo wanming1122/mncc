@@ -69,9 +69,7 @@ def test_mcp_tool_namespace_unique_in_registry() -> None:
 
 def test_attach_registers_echo_tool_from_subprocess() -> None:
     """真实 echo server attach 进 registry：mcp__ 前缀命名 + needs_confirm=True。"""
-    cfg = McpServerConfig(
-        name="echo", command=sys.executable, args=("-m", "mncc.mcp.echo_server")
-    )
+    cfg = McpServerConfig(name="echo", command=sys.executable, args=("-m", "mncc.mcp.echo_server"))
     registry = ToolRegistry()
     clients = attach_mcp_tools(registry, [cfg])
     try:
@@ -92,9 +90,7 @@ def test_attach_registers_echo_tool_from_subprocess() -> None:
 def test_attach_skips_failing_server() -> None:
     """D4：启动失败的 server 打警告跳过，其余照常注册。"""
     registry = ToolRegistry()
-    good = McpServerConfig(
-        name="echo", command=sys.executable, args=("-m", "mncc.mcp.echo_server")
-    )
+    good = McpServerConfig(name="echo", command=sys.executable, args=("-m", "mncc.mcp.echo_server"))
     bad = McpServerConfig(name="ghost", command="definitely-not-a-real-cmd-xyz")
     clients = attach_mcp_tools(registry, [bad, good])
     try:

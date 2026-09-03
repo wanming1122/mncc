@@ -14,7 +14,7 @@ TESTS = ROOT / "test_bank.py"
 _ENV = {**os.environ, "PYTHONUTF8": "1"}  # Windows 子进程统一 UTF-8（§3）
 
 # 变异体：withdraw 不检查余额，允许透支（余额可为负）
-MUTANT_BANK = '''class Account:
+MUTANT_BANK = """class Account:
     def __init__(self, owner):
         self.owner = owner
         self._balance = 0
@@ -32,7 +32,7 @@ MUTANT_BANK = '''class Account:
         if amount <= 0:
             raise ValueError("取款金额必须为正")
         self._balance -= amount  # 变异：漏掉余额检查
-'''
+"""
 
 
 def _run_pytest(cwd: Path) -> subprocess.CompletedProcess[str]:

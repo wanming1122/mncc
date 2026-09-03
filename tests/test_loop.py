@@ -272,9 +272,13 @@ def test_budget_exceeded_stops_before_next_model_call(string_console) -> None:
     session.add_user("go")
     client = ScriptedClient(
         [
-            [ResponseCompleted(
-                content="", usage=Usage(150, 100, 250), tool_calls=[ToolCall("c1", "echo", "{}")]
-            )],
+            [
+                ResponseCompleted(
+                    content="",
+                    usage=Usage(150, 100, 250),
+                    tool_calls=[ToolCall("c1", "echo", "{}")],
+                )
+            ],
             [ResponseCompleted("不该到达")],
         ]
     )
@@ -320,10 +324,15 @@ def test_interrupt_during_tool_execution_keeps_structure_valid(string_console) -
     session.add_user("go")
     client = ScriptedClient(
         [
-            [ResponseCompleted(
-                content="",
-                tool_calls=[ToolCall("c1", "echo", '{"text": "a"}'), ToolCall("c2", "intr", "{}")],
-            )]
+            [
+                ResponseCompleted(
+                    content="",
+                    tool_calls=[
+                        ToolCall("c1", "echo", '{"text": "a"}'),
+                        ToolCall("c2", "intr", "{}"),
+                    ],
+                )
+            ]
         ]
     )
 
@@ -368,10 +377,12 @@ def test_confirm_refused_exception_aborts_task(string_console) -> None:
     session.add_user("go")
     client = ScriptedClient(
         [
-            [ResponseCompleted(
-                content="",
-                tool_calls=[ToolCall("c1", "risky", "{}"), ToolCall("c2", "risky", "{}")],
-            )]
+            [
+                ResponseCompleted(
+                    content="",
+                    tool_calls=[ToolCall("c1", "risky", "{}"), ToolCall("c2", "risky", "{}")],
+                )
+            ]
         ]
     )
 
@@ -398,9 +409,7 @@ def test_yolo_skips_confirm(string_console) -> None:
     def must_not_ask(tool: Tool, args: dict[str, Any]) -> bool:
         raise AssertionError("yolo 模式不应触发确认回调")
 
-    result = run_agent_loop(
-        client, renderer, session, registry, confirm=must_not_ask, yolo=True
-    )
+    result = run_agent_loop(client, renderer, session, registry, confirm=must_not_ask, yolo=True)
 
     assert result.status == STATUS_COMPLETED
 

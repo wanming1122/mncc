@@ -21,20 +21,20 @@ def test_stdout_and_exit_code(cmd) -> None:
 
 def test_stderr_captured(cmd) -> None:
     # Python 一行脚本写 stderr
-    out = cmd.run('python -c "import sys; sys.stderr.write(\'err_msg\')"', timeout=10)
+    out = cmd.run("python -c \"import sys; sys.stderr.write('err_msg')\"", timeout=10)
     assert "err_msg" in out
     assert "stderr" in out
 
 
 def test_nonzero_exit_code_is_not_error(cmd) -> None:
     """非零退出码不算 is_error——exit_code 本身就是给模型的事实。"""
-    out = cmd.run("python -c \"raise SystemExit(42)\"", timeout=10)
+    out = cmd.run('python -c "raise SystemExit(42)"', timeout=10)
     assert "exit_code: 42" in out
 
 
 def test_timeout_kills_process(cmd) -> None:
     with pytest.raises(Exception, match="超过.*未结束"):
-        cmd.run("python -c \"import time; time.sleep(60)\"", timeout=1)
+        cmd.run('python -c "import time; time.sleep(60)"', timeout=1)
 
 
 def test_timeout_shows_partial_output(cmd) -> None:
@@ -58,7 +58,7 @@ def test_invalid_timeout_raises(cmd) -> None:
 
 def test_output_truncation_preserves_head_and_tail(cmd) -> None:
     # 产生超长 stdout，验证截断后保留首尾
-    script = 'python -c "print(\'H\'); print(\'x\' * 20000); print(\'T\')"'
+    script = "python -c \"print('H'); print('x' * 20000); print('T')\""
     out = cmd.run(script, timeout=30)
     assert "H" in out  # 头保留
     assert "T" in out  # 尾保留
@@ -73,7 +73,7 @@ def test_no_output_section_when_empty(cmd) -> None:
 
 
 def test_utf8_output_no_garbled(cmd) -> None:
-    out = cmd.run('python -c "print(\'你好世界\')"', timeout=10)
+    out = cmd.run("python -c \"print('你好世界')\"", timeout=10)
     assert "你好世界" in out
 
 

@@ -126,35 +126,39 @@ cassette.json 结构（与测试里 ScriptedClient 的事件序列同构，JSON 
 ```python
 @dataclass
 class TaskMeta:
-    task_id: str          # 目录名，全局唯一
+    task_id: str  # 目录名，全局唯一
     name: str
-    category: str         # bugfix | feature | refactor | testwrite
-    difficulty: str       # easy | medium | hard
+    category: str  # bugfix | feature | refactor | testwrite
+    difficulty: str  # easy | medium | hard
+
 
 @dataclass
 class TaskResult:
     task_id: str
-    mode: str                     # real | mock
-    status: str                   # pass | fail | timeout | error
-    exit_code: int | None         # mncc -p 退出码（D1：只记录不判分）
-    verified: bool                # 终态 pytest 全绿（D1：判分依据）
-    pytest_detail: str            # 评分 pytest 的摘要/末行
+    mode: str  # real | mock
+    status: str  # pass | fail | timeout | error
+    exit_code: int | None  # mncc -p 退出码（D1：只记录不判分）
+    verified: bool  # 终态 pytest 全绿（D1：判分依据）
+    pytest_detail: str  # 评分 pytest 的摘要/末行
     turns: int
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
     elapsed: float
-    error: str = ""               # timeout/error 时的人类可读说明
+    error: str = ""  # timeout/error 时的人类可读说明
 
-def load_meta(task_id: str) -> TaskMeta: ...          # 读 meta.toml
+
+def load_meta(task_id: str) -> TaskMeta: ...  # 读 meta.toml
 def discover_tasks(only: list[str] | None) -> list[str]: ...
-def run_task(task: TaskMeta, *, mode: str, model: str | None,
-             timeout: int) -> TaskResult: ...
+def run_task(task: TaskMeta, *, mode: str, model: str | None, timeout: int) -> TaskResult:
+    ...
     # real：临时目录 → init/ + task.md + 写 .mncc.toml → 子进程 mncc -p --yolo
     #       --stats-json → 拷 test.py → 子进程 pytest → TaskResult（D2/D3/D4）
     # mock：无 cassette → 返回 status="skipped"；有 → 进程内 fake client（D5）
-def run(mode: str, *, tasks: list[str] | None, label: str = "",
-        model: str | None) -> int: ...
+
+
+def run(mode: str, *, tasks: list[str] | None, label: str = "", model: str | None) -> int:
+    ...
     # 逐任务跑 → 汇总（overall/按难度/按类别）→ 落盘 results/<run_id>.json
     # → rich 表格打印 → 退出码 = 全部 pass 则 0
 ```
@@ -169,12 +173,16 @@ key 全部沿用用户全局配置，`--model` 可选透传给 `mncc -p --model`
 ### 3.3 `bench/report.py`（新建）
 
 ```python
-def load_run(path: str) -> dict: ...          # results/*.json
+def load_run(path: str) -> dict: ...  # results/*.json
 def summary_table(run) -> rich.table.Table: ...
-def markdown_table(run) -> str: ...           # README 可粘贴
-def compare_table(old: dict, new: dict) -> str: ...
+def markdown_table(run) -> str: ...  # README 可粘贴
+def compare_table(old: dict, new: dict) -> str:
+    ...
     # 逐任务 老→新 对比 + 总分/分档/分类 pass_rate 增量
-def main(argv) -> int: ...
+
+
+def main(argv) -> int:
+    ...
     # report.py <a.json> [b.json] [--md]
     #   单份：总表 + 分难度/分类表；两份：对比表；--md：纯 markdown 输出
 ```

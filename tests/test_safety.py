@@ -137,7 +137,7 @@ def test_approve_single_program_does_not_authorize_other_commands(
 ) -> None:
     """防"程序名首 token 授权"式的越权：批准 pytest 不放行 python -c。"""
     cmd_guard.approve("python -m pytest")
-    assert _verdict(cmd_guard, 'python -c "import os; os.remove(\'x\')"') == "confirm"
+    assert _verdict(cmd_guard, "python -c \"import os; os.remove('x')\"") == "confirm"
 
 
 def test_empty_command_blocked(cmd_guard: CommandGuard) -> None:

@@ -14,7 +14,7 @@ TESTS = ROOT / "test_series.py"
 _ENV = {**os.environ, "PYTHONUTF8": "1"}  # Windows 子进程统一 UTF-8（§3）
 
 # 变异体：geometric_sum 漏掉 r == 1 特例（r=1 时除零）
-MUTANT_SERIES = '''def arithmetic_sum(n):
+MUTANT_SERIES = """def arithmetic_sum(n):
     if n < 0:
         raise ValueError("n 必须为非负整数")
     return n * (n + 1) // 2
@@ -26,7 +26,7 @@ def geometric_sum(a, r, n):
     if n == 0:
         return 0.0
     return a * (1 - r**n) / (1 - r)  # 变异：漏掉 r==1 特例
-'''
+"""
 
 
 def _run_pytest(cwd: Path) -> subprocess.CompletedProcess[str]:

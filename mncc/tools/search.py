@@ -206,8 +206,7 @@ class GrepTool(Tool):
             out = out[:MAX_GREP_MATCHES]
         if not out:
             return (
-                f"未找到匹配（pattern={pattern!r}，范围 {path}"
-                f"{f'，glob={glob}' if glob else ''}）"
+                f"未找到匹配（pattern={pattern!r}，范围 {path}{f'，glob={glob}' if glob else ''}）"
             )
         body = "\n".join(out)
         if truncated:
